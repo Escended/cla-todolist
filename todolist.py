@@ -17,39 +17,26 @@ class Task(Base):
     deadline = Column(Date, default=datetime.today())
 
     def __repr__(self):
-        """
-        it will look like this format
-        id. task
-        id. task
-        id. task
-        """
-        return f"{self.id}. {self.task}"
+
+        return f"{self.task}"
 
 
 class ToDoList:
     prompt = "1) Today's tasks\n2) Week's tasks\n3) All tasks\n4) Missed Tasks\n5) Add task\n6) Delete Task\n0) Exit\n"
 
     def __init__(self, db_name):
-        """
-        initialising the database and gui
-        """
-        # table and database initialising
         self.engine = create_engine(f"sqlite:///{db_name}.db?check_same_thread=False")
         Base.metadata.create_all(self.engine)
 
         # Session and interaction with database initialising
         self.session = sessionmaker(bind=self.engine)()
 
-        # todo list gui initialising
         self.choices = {'1': self.show_today_tasks, '2': self.show_weeks_tasks, '3': self.show_all_tasks,
                         '4': self.missed_tasks, '5': self.add_task, '6': self.delete_task, '0': self.shutdown}
         self.running = True
         self.main()
 
     def shutdown(self):
-        """
-        shuts down the program, by terminating the while loop
-        """
         self.running = False
 
     def show_today_tasks(self, day=datetime.today()):
@@ -66,6 +53,9 @@ class ToDoList:
             print("Nothing to do!")
 
     def show_weeks_tasks(self):
+        """
+        Find all the tasks in the following 7 days
+        """
         today = datetime.today()
         for i in range(0, 7):
             current_day = today + timedelta(days=i)
@@ -82,13 +72,7 @@ class ToDoList:
 
     def show_all_tasks(self):
         """
-        acquires all the records in the database
-
-        if there are no tasks:
-            it will prompt it
-
-        if there are tasks:
-            it will print them one by one, in an appropriate format
+        acquires all the rows in the database
         """
         all_tasks = {}
         tasks = self.session.query(Task).order_by(Task.deadline).all()
@@ -103,7 +87,11 @@ class ToDoList:
         return all_tasks
 
     def missed_tasks(self):
-        missed_tasks = self.session.query(Task).order_by(Task.deadline).filter(Task.deadline < datetime.today().date()).all()
+        """
+        find all rows that date before today
+        """
+        missed_tasks = self.session.query(Task).order_by(Task.deadline).filter(Task.deadline <
+                                                                               datetime.today().date()).all()
         if missed_tasks:
             for idx, task in enumerate(missed_tasks, 1):
                 print(f"{idx}. {task.task} {task.deadline.day} {task.deadline.strftime('%b')}")
@@ -122,6 +110,11 @@ class ToDoList:
         print("The task has been added!")
 
     def delete_task(self):
+        """
+        Delete rows by storing each row as an object in a dictionary
+        to map it correctly with the numbers displayed which may differ
+        from the order in the database.
+        """
         print("Choose the number of the task you want to delete:")
         task_dict = self.show_all_tasks()
         try:
